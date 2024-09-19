@@ -68,7 +68,7 @@ public class HealthCheckReactor {
         Runnable wrapperTask =
                 task instanceof NacosHealthCheckTask ? new HealthCheckTaskInterceptWrapper((NacosHealthCheckTask) task)
                         : task;
-        futureMap.computeIfAbsent(task.taskKey(),
+        futureMap.computeIfAbsent(task.taskKey(), // 5秒钟检查一次心跳
                 k -> GlobalExecutor.scheduleNamingHealth(wrapperTask, 5000, 5000, TimeUnit.MILLISECONDS));
     }
     

@@ -120,7 +120,7 @@ public class NamingSubscriberServiceV2Impl extends SmartSubscriber implements Na
         if (!upgradeJudgement.isUseGrpcFeatures()) {
             return;
         }
-        if (event instanceof ServiceEvent.ServiceChangedEvent) {
+        if (event instanceof ServiceEvent.ServiceChangedEvent) { // instance 上下线事件
             // If service changed, push to all subscribers.
             ServiceEvent.ServiceChangedEvent serviceChangedEvent = (ServiceEvent.ServiceChangedEvent) event;
             Service service = serviceChangedEvent.getService();

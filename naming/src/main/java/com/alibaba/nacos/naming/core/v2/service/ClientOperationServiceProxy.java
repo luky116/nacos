@@ -53,7 +53,7 @@ public class ClientOperationServiceProxy implements ClientOperationService {
     
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) throws NacosException {
-        final ClientOperationService operationService = chooseClientOperationService(instance);
+        final ClientOperationService operationService = chooseClientOperationService(instance); // 这里会区分临时节点还是持久化节点
         operationService.registerInstance(service, instance, clientId);
     }
     

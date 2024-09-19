@@ -59,10 +59,16 @@ public class ClientConnectionEventListenerRegistry {
      * @param connection connection that disconnected.
      */
     public void notifyClientDisConnected(final Connection connection) {
-        
+        /**
+         * ClientConnectionEventListener 有以下三个子类：
+         * 1、ConnectionBasedClientManager：
+         * 2、ConfigConnectionEventListener：
+         * 3、RpcAckCallbackInitorOrCleaner：
+         */
         for (ClientConnectionEventListener clientConnectionEventListener : clientConnectionEventListeners) {
             try {
                 clientConnectionEventListener.clientDisConnected(connection);
+//                clientConnectionEventListeners.get(0).clientDisConnected(connection);
             } catch (Throwable throwable) {
                 Loggers.REMOTE.info("[NotifyClientDisConnected] failed for listener {}",
                         clientConnectionEventListener.getName(), throwable);

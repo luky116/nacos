@@ -61,7 +61,7 @@ public class NotifyCenter {
     private static Class<? extends EventPublisher> clazz;
     
     /**
-     * Publisher management container.
+     * Publisher management container. 不同 Event 事件和对应处理器的映射关系
      */
     private final Map<String, EventPublisher> publisherMap = new ConcurrentHashMap<>(16);
     
@@ -290,16 +290,16 @@ public class NotifyCenter {
      * @param eventType class Instances type of the event type.
      * @param event     event instance.
      */
-    private static boolean publishEvent(final Class<? extends Event> eventType, final Event event) {
+    private static boolean publishEvent(final Class<? extends Event> eventType, final Event event) { // event: ClientEvent$ClientDisconnectEvent
         if (ClassUtils.isAssignableFrom(SlowEvent.class, eventType)) {
             return INSTANCE.sharePublisher.publish(event);
         }
         
-        final String topic = ClassUtils.getCanonicalName(eventType);
+        final String topic = ClassUtils.getCanonicalName(eventType); // com.alibaba.nacos.naming.core.v2.event.client.ClientEvent.ClientDisconnectEvent
         
         EventPublisher publisher = INSTANCE.publisherMap.get(topic);
         if (publisher != null) {
-            return publisher.publish(event);
+            return publisher.publish(event); // 发布事件
         }
         if (event.isPluginEvent()) {
             return true;

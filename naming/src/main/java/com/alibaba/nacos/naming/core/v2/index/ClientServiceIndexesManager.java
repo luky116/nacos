@@ -90,15 +90,20 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     
     @Override
     public void onEvent(Event event) {
+        // 如果有 client 断开连接，会发送这个 event
         if (event instanceof ClientEvent.ClientDisconnectEvent) {
             handleClientDisconnect((ClientEvent.ClientDisconnectEvent) event);
         } else if (event instanceof ClientOperationEvent) {
             handleClientOperation((ClientOperationEvent) event);
         }
     }
-    
+
+    // TODO 理清楚 SubscribeService 和 PublishedService 之间的区别和联系
     private void handleClientDisconnect(ClientEvent.ClientDisconnectEvent event) {
         Client client = event.getClient();
+        // 从订阅者列表中移除所有服务对这个 client 的引用
+        // private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
+        // key: Service      value: 客户端ID集合
         for (Service each : client.getAllSubscribeService()) {
             removeSubscriberIndexes(each, client.getClientId());
         }
@@ -106,6 +111,7 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
                 ? DeregisterInstanceReason.NATIVE_DISCONNECTED : DeregisterInstanceReason.SYNCED_DISCONNECTED;
         long currentTimeMillis = System.currentTimeMillis();
         for (Service each : client.getAllPublishedService()) {
+            // 从发布者列表中移除所有服务对这个 client 的引用
             removePublisherIndexes(each, client.getClientId());
             InstancePublishInfo instance = client.getInstancePublishInfo(each);
             NotifyCenter.publishEvent(new DeregisterInstanceTraceEvent(currentTimeMillis,

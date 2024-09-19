@@ -62,6 +62,7 @@ public class ClientBeatProcessorV2 implements BeatProcessor {
             if (Loggers.EVT_LOG.isDebugEnabled()) {
                 Loggers.EVT_LOG.debug("[CLIENT-BEAT] refresh beat: {}", rsInfo);
             }
+            // 设置上次正常心跳检查时间
             instance.setLastHeartBeatTime(System.currentTimeMillis());
             if (!instance.isHealthy()) {
                 instance.setHealthy(true);

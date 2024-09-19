@@ -134,7 +134,7 @@ public abstract class BaseGrpcServer extends BaseRpcServer {
                     }
                     
                     @Override
-                    public void transportTerminated(Attributes transportAttrs) {
+                    public void transportTerminated(Attributes transportAttrs) { // 如果断开连接，会从这里回调
                         String connectionId = null;
                         try {
                             connectionId = transportAttrs.get(TRANS_KEY_CONN_ID);

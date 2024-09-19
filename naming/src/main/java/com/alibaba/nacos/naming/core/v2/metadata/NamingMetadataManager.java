@@ -224,10 +224,13 @@ public class NamingMetadataManager extends SmartSubscriber {
     @Override
     public void onEvent(Event event) {
         if (event instanceof MetadataEvent.InstanceMetadataEvent) {
+            // 处理实例元数据事件
             handleInstanceMetadataEvent((MetadataEvent.InstanceMetadataEvent) event);
         } else if (event instanceof MetadataEvent.ServiceMetadataEvent) {
+            // 处理服务元数据事件
             handleServiceMetadataEvent((MetadataEvent.ServiceMetadataEvent) event);
         } else {
+            // 处理客户端断开连接事件
             handleClientDisconnectEvent((ClientEvent.ClientDisconnectEvent) event);
         }
     }
@@ -236,6 +239,7 @@ public class NamingMetadataManager extends SmartSubscriber {
         for (Service each : event.getClient().getAllPublishedService()) {
             String metadataId = event.getClient().getInstancePublishInfo(each).getMetadataId();
             if (containInstanceMetadata(each, metadataId)) {
+                // 实例已过期，将实例元数据添加到过期集合中
                 updateExpiredInfo(true, ExpiredMetadataInfo.newExpiredInstanceMetadata(each, metadataId));
             }
         }

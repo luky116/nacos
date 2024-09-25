@@ -93,6 +93,8 @@ public class NamingClientProxyDelegate implements NamingClientProxy {
     
     @Override
     public void registerService(String serviceName, String groupName, Instance instance) throws NacosException {
+        // 如果是临时服务，使用 grpcClientProxy
+        // 如果是持久服务，使用 httpClientProxy
         getExecuteClientProxy(instance).registerService(serviceName, groupName, instance);
     }
     

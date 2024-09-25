@@ -106,11 +106,14 @@ public abstract class BaseGrpcServer extends BaseRpcServer {
                 return Contexts.interceptCall(ctx, call, headers, next);
             }
         };
-        
+
+        // 注册服务
         addServices(handlerRegistry, serverInterceptor);
-        
+
+        // 创建grpc的server端
         server = ServerBuilder.forPort(getServicePort()).executor(getRpcExecutor())
-                .maxInboundMessageSize(getInboundMessageSize()).fallbackHandlerRegistry(handlerRegistry)
+                .maxInboundMessageSize(getInboundMessageSize())
+                .fallbackHandlerRegistry(handlerRegistry)
                 .compressorRegistry(CompressorRegistry.getDefaultInstance())
                 .decompressorRegistry(DecompressorRegistry.getDefaultInstance())
                 .addTransportFilter(new ServerTransportFilter() {
@@ -134,6 +137,7 @@ public abstract class BaseGrpcServer extends BaseRpcServer {
                     }
                     
                     @Override
+                    // 如果有 client 关闭，会调用这个方法
                     public void transportTerminated(Attributes transportAttrs) { // 如果断开连接，会从这里回调
                         String connectionId = null;
                         try {
@@ -148,7 +152,8 @@ public abstract class BaseGrpcServer extends BaseRpcServer {
                         }
                     }
                 }).build();
-        
+
+        // 启动grpc server
         server.start();
     }
     
@@ -171,7 +176,8 @@ public abstract class BaseGrpcServer extends BaseRpcServer {
                 .setFullMethodName(MethodDescriptor.generateFullMethodName(REQUEST_SERVICE_NAME, REQUEST_METHOD_NAME))
                 .setRequestMarshaller(ProtoUtils.marshaller(Payload.getDefaultInstance()))
                 .setResponseMarshaller(ProtoUtils.marshaller(Payload.getDefaultInstance())).build();
-        
+
+        // RPC 请求的接收和处理入口
         final ServerCallHandler<Payload, Payload> payloadHandler = ServerCalls
                 .asyncUnaryCall((request, responseObserver) -> grpcCommonRequestAcceptor.request(request, responseObserver));
         
@@ -180,6 +186,7 @@ public abstract class BaseGrpcServer extends BaseRpcServer {
         handlerRegistry.addService(ServerInterceptors.intercept(serviceDefOfUnaryPayload, serverInterceptor));
         
         // bi stream register.
+        // 双向流处理类，保证 client 和 server 之间能保持长连接
         final ServerCallHandler<Payload, Payload> biStreamHandler = ServerCalls.asyncBidiStreamingCall(
                 (responseObserver) -> grpcBiStreamRequestAcceptor.requestBiStream(responseObserver));
         

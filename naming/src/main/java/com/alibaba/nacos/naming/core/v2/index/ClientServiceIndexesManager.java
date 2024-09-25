@@ -45,9 +45,11 @@ import java.util.concurrent.ConcurrentMap;
  */
 @Component
 public class ClientServiceIndexesManager extends SmartSubscriber {
-    
+
+    // Service 和 instance服务发布者 clientId 的映射关系
     private final ConcurrentMap<Service, Set<String>> publisherIndexes = new ConcurrentHashMap<>();
-    
+
+    // Service 和 instance服务订阅者 clientId 的映射关系
     private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
     
     public ClientServiceIndexesManager() {
@@ -57,7 +59,8 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     public Collection<String> getAllClientsRegisteredService(Service service) {
         return publisherIndexes.containsKey(service) ? publisherIndexes.get(service) : new ConcurrentHashSet<>();
     }
-    
+
+    // PushExecuteTask 中会用到，获取要推送的 client 信息
     public Collection<String> getAllClientsSubscribeService(Service service) {
         return subscriberIndexes.containsKey(service) ? subscriberIndexes.get(service) : new ConcurrentHashSet<>();
     }
@@ -105,6 +108,7 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
         // private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
         // key: Service      value: 客户端ID集合
         for (Service each : client.getAllSubscribeService()) {
+            // 移除订阅者信息
             removeSubscriberIndexes(each, client.getClientId());
         }
         DeregisterInstanceReason reason = event.isNative()
@@ -151,6 +155,7 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     private void addSubscriberIndexes(Service service, String clientId) {
         subscriberIndexes.computeIfAbsent(service, (key) -> new ConcurrentHashSet<>());
         // Fix #5404, Only first time add need notify event.
+        // TODO 分析原因，为啥这样会导致重复打印日志？
         if (subscriberIndexes.get(service).add(clientId)) {
             NotifyCenter.publishEvent(new ServiceEvent.ServiceSubscribedEvent(service, clientId));
         }

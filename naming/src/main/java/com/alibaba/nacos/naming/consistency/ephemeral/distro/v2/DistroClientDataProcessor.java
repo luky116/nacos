@@ -99,12 +99,15 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
         if (EnvUtil.getStandaloneMode()) {
             return;
         }
+        // 如果不使用grpc特性，不进行数据同步
         if (!upgradeJudgement.isUseGrpcFeatures()) {
             return;
         }
         if (event instanceof ClientEvent.ClientVerifyFailedEvent) {
             syncToVerifyFailedServer((ClientEvent.ClientVerifyFailedEvent) event);
         } else {
+            // ClientEvent.ClientChangedEvent
+            // ClientEvent.ClientDisconnectEvent
             syncToAllServer((ClientEvent) event);
         }
     }
@@ -118,10 +121,12 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
         // Verify failed data should be sync directly.
         distroProtocol.syncToTarget(distroKey, DataOperation.ADD, event.getTargetServer(), 0L);
     }
-    
+
+    // 同步给其他的 nacos 节点
     private void syncToAllServer(ClientEvent event) {
         Client client = event.getClient();
         // Only ephemeral data sync by Distro, persist client should sync by raft.
+        // 临时数据通过 Distro 通知，持久化数据通过 raft 通知
         if (null == client || !client.isEphemeral() || !clientManager.isResponsibleClient(client)) {
             return;
         }

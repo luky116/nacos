@@ -51,7 +51,7 @@ public class TpsControlRequestFilter extends AbstractRequestFilter {
             return null;
         }
         
-        if (method.isAnnotationPresent(TpsControl.class) && TpsControlConfig.isTpsControlEnabled()) {
+        if (method.isAnnotationPresent(TpsControl.class) && TpsControlConfig.isTpsControlEnabled()) { // TpsControl 注解表示要限流
             
             TpsControl tpsControl = method.getAnnotation(TpsControl.class);
             

@@ -33,6 +33,7 @@ public class GrpcSdkServer extends BaseGrpcServer {
     
     @Override
     public int rpcPortOffset() {
+        // port 偏移： +1000
         return Constants.SDK_GRPC_PORT_DEFAULT_OFFSET;
     }
     

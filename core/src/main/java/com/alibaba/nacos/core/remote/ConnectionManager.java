@@ -67,6 +67,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author liuzunfei
  * @version $Id: ConnectionManager.java, v 0.1 2020年07月13日 7:07 PM liuzunfei Exp $
+ * 负责管理好连接，以及连接的探活时间
  */
 @Service
 public class ConnectionManager extends Subscriber<ConnectionLimitRuleChangeEvent> {

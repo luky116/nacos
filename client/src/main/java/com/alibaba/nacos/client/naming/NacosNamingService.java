@@ -93,9 +93,14 @@ public class NacosNamingService implements NamingService {
     
         this.notifierEventScope = UUID.randomUUID().toString();
         this.changeNotifier = new InstancesChangeNotifier(this.notifierEventScope);
+        // 注册 InstancesChangeEvent 事件监听
         NotifyCenter.registerToPublisher(InstancesChangeEvent.class, 16384);
         NotifyCenter.registerSubscriber(changeNotifier);
+
         this.serviceInfoHolder = new ServiceInfoHolder(namespace, this.notifierEventScope, properties);
+        // 用于与服务端通信，它是一个代理，内部使用其他的NamingClientProxy实现：
+        // 1、NamingHttpClientProxy
+        // 2、NamingGrpcClientProxy：默认使用该实现类，其中有healthCheck检测服务端是否健康，服务端直接响应成功无操作
         this.clientProxy = new NamingClientProxyDelegate(this.namespace, serviceInfoHolder, properties, changeNotifier);
     }
     
@@ -146,6 +151,7 @@ public class NacosNamingService implements NamingService {
     @Override
     public void registerInstance(String serviceName, String groupName, Instance instance) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
+        // 此处clientProxy是NamingClientProxyDelegate对象
         clientProxy.registerService(serviceName, groupName, instance);
     }
     
@@ -235,11 +241,13 @@ public class NacosNamingService implements NamingService {
         ServiceInfo serviceInfo;
         String clusterString = StringUtils.join(clusters, ",");
         if (subscribe) {
+            // 如果本地缓存不存在服务信息，则进行订阅
             serviceInfo = serviceInfoHolder.getServiceInfo(serviceName, groupName, clusterString);
             if (null == serviceInfo || !clientProxy.isSubscribed(serviceName, groupName, clusterString)) {
                 serviceInfo = clientProxy.subscribe(serviceName, groupName, clusterString);
             }
         } else {
+            // 如果非订阅模式就直接拉取服务端的注册表
             serviceInfo = clientProxy.queryInstancesOfService(serviceName, groupName, clusterString, 0, false);
         }
         List<Instance> list;

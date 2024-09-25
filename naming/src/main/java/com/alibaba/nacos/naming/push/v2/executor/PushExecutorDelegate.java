@@ -32,9 +32,11 @@ import java.util.Optional;
 @SuppressWarnings("PMD.ServiceOrDaoClassShouldEndWithImplRule")
 @Component
 public class PushExecutorDelegate implements PushExecutor {
-    
+
+    // rpc执行类，V2版本使用
     private final PushExecutorRpcImpl rpcPushExecuteService;
-    
+
+    // udp执行类，V1版本使用
     private final PushExecutorUdpImpl udpPushExecuteService;
     
     public PushExecutorDelegate(PushExecutorRpcImpl rpcPushExecuteService, PushExecutorUdpImpl udpPushExecuteService) {
@@ -60,6 +62,7 @@ public class PushExecutorDelegate implements PushExecutor {
             return result.get();
         }
         // use nacos default push executor
+        // 根据连接的客户端id识别是由upd推送还是rpc推送
         return clientId.contains(IpPortBasedClient.ID_DELIMITER) ? udpPushExecuteService : rpcPushExecuteService;
     }
 }

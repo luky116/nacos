@@ -26,7 +26,7 @@ import java.util.Objects;
 public class DistroKey {
     
     private String resourceKey;
-    
+    // TODO resourceType 都有哪些类型？
     private String resourceType;
     
     private String targetServer;

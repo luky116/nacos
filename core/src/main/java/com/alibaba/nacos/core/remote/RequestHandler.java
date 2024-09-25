@@ -28,6 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  *
  * @author liuzunfei
  * @author xiweng.yy
+ *
+ * 处理请求的 handler
  */
 @SuppressWarnings("PMD.AbstractClassShouldStartWithAbstractNamingRule")
 public abstract class RequestHandler<T extends Request, S extends Response> {
@@ -43,9 +45,11 @@ public abstract class RequestHandler<T extends Request, S extends Response> {
      * @return response
      * @throws NacosException nacos exception when handle request has problem.
      */
+    // 请求处理入口
     public Response handleRequest(T request, RequestMeta meta) throws NacosException {
         for (AbstractRequestFilter filter : requestFilters.filters) {
             try {
+                // 1、鉴权；2、限流；
                 Response filterResult = filter.filter(request, meta, this.getClass());
                 if (filterResult != null && !filterResult.isSuccess()) {
                     return filterResult;

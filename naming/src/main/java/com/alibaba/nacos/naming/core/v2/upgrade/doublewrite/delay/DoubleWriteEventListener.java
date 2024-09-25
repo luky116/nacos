@@ -40,6 +40,7 @@ import static com.alibaba.nacos.naming.core.v2.upgrade.doublewrite.delay.DoubleW
  *
  * @author xiweng.yy
  */
+// TODO 待理解此类的含义
 @Component
 public class DoubleWriteEventListener extends Subscriber<ServiceEvent.ServiceChangedEvent> {
     

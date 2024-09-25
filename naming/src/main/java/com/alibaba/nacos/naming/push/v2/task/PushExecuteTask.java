@@ -48,28 +48,37 @@ public class PushExecuteTask extends AbstractExecuteTask {
     private final PushDelayTask delayTask;
     
     public PushExecuteTask(Service service, PushDelayTaskExecuteEngine delayTaskEngine, PushDelayTask delayTask) {
+        // 此服务主要负责 service 推送相关任务，所以需要一个 Service 对象
+        // TODO delayTask 中已经有一个 service 属性，这里为啥要搞一个 service 成员变量？难道这俩会有不同的情况？
         this.service = service;
         this.delayTaskEngine = delayTaskEngine;
+        // 实际要执行的任务，里面记录了：1、要推送的服务 Service；2、以及推送的目标客户端 targetClients
         this.delayTask = delayTask;
     }
     
     @Override
     public void run() {
         try {
+            // 生成推送数据
             PushDataWrapper wrapper = generatePushData();
+            // 获取客户端管理类
             ClientManager clientManager = delayTaskEngine.getClientManager();
+            // getTargetClientIds：要推送的目标 client id（可能是所有的 client id，也可能是指定的 client id）
             for (String each : getTargetClientIds()) {
+                // 获取每个客户端
                 Client client = clientManager.getClient(each);
                 if (null == client) {
                     // means this client has disconnect
                     continue;
                 }
                 Subscriber subscriber = clientManager.getClient(each).getSubscriber(service);
+                // 进行推送
                 delayTaskEngine.getPushExecutor().doPushWithCallback(each, subscriber, wrapper,
                         new ServicePushCallback(each, subscriber, wrapper.getOriginalData(), delayTask.isPushToAll()));
             }
         } catch (Exception e) {
             Loggers.PUSH.error("Push task for service" + service.getGroupedServiceName() + " execute failed ", e);
+            // 失败重推，1秒后重新进行推送
             delayTaskEngine.addTask(service, new PushDelayTask(service, 1000L));
         }
     }

@@ -176,6 +176,8 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
             }
             return;
         }
+
+        // nacos、etcd、kafka、rpc
         int i = 0;
         for (Subscriber subscriber : subscribers) {
             //处理该 event 事件的逻辑

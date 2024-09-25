@@ -98,7 +98,7 @@ public class DistroMapper extends MemberChangeListener {
         if (lastIndex < 0 || index < 0) {
             return true;
         }
-        
+        // 一段范围内的 index 由当前 server 负责
         int target = distroHash(responsibleTag) % servers.size();
         return target >= index && target <= lastIndex;
     }

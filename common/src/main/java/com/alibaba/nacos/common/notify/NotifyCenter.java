@@ -45,19 +45,31 @@ import static com.alibaba.nacos.api.exception.NacosException.SERVER_ERROR;
 public class NotifyCenter {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(NotifyCenter.class);
-    
+
+    // 单事件发布者内部的事件队列初始容量
     public static int ringBufferSize;
-    
+
+    // 多事件发布者内部的事件队列初始容量
     public static int shareBufferSize;
-    
+
+    // 此 NotifyCenter 的状态
     private static final AtomicBoolean CLOSED = new AtomicBoolean(false);
-    
+
+    // 构造发布者的工厂
     private static final EventPublisherFactory DEFAULT_PUBLISHER_FACTORY;
-    
+
+    // 通知中心的实例
     private static final NotifyCenter INSTANCE = new NotifyCenter();
-    
+
+    // 默认的多事件发布者
     private DefaultSharePublisher sharePublisher;
-    
+
+    /**
+     * 默认的单事件发布者类型
+     * 此处并未直接指定单事件发布者是谁，只是限定了它的类别
+     * 因为单事件发布者一个发布者只负责一个事件，因此会存在
+     * 多个发布者实例，后面按需创建，并缓存在publisherMap
+     */
     private static Class<? extends EventPublisher> clazz;
     
     /**
@@ -68,24 +80,33 @@ public class NotifyCenter {
     static {
         // Internal ArrayBlockingQueue buffer size. For applications with high write throughput,
         // this value needs to be increased appropriately. default value is 16384
+        // 默认的生产者的阻塞队列大小
         String ringBufferSizeProperty = "nacos.core.notify.ring-buffer-size";
         ringBufferSize = Integer.getInteger(ringBufferSizeProperty, 16384);
         
         // The size of the public publisher's message staging queue buffer
+        // 共享生产者阻塞队列大小
         String shareBufferSizeProperty = "nacos.core.notify.share-buffer-size";
         shareBufferSize = Integer.getInteger(shareBufferSizeProperty, 1024);
-        
+
+        // 使用Nacos SPI机制获取事件发布者
         final Collection<EventPublisher> publishers = NacosServiceLoader.load(EventPublisher.class);
+        // 获取迭代器
         Iterator<EventPublisher> iterator = publishers.iterator();
-        
+
+        // 用户自定义的 EventPublisher
         if (iterator.hasNext()) {
             clazz = iterator.next().getClass();
         } else {
+            // 如果用户未定义 EventPublisher，则使用默认的发布器（单事件发布者）
             clazz = DefaultPublisher.class;
         }
-        
+
+        // 创建一个发布工厂，主要是对生产者进行创建并初始化
+        // 可以看到，每次产生一个新的 Publisher
         DEFAULT_PUBLISHER_FACTORY = (cls, buffer) -> {
             try {
+                // 为指定类型的事件创建一个单事件发布者对象
                 EventPublisher publisher = clazz.newInstance();
                 publisher.init(cls, buffer);
                 return publisher;
@@ -96,7 +117,7 @@ public class NotifyCenter {
         };
         
         try {
-            
+            // 初始化多事件发布者
             // Create and init DefaultSharePublisher instance.
             INSTANCE.sharePublisher = new DefaultSharePublisher();
             INSTANCE.sharePublisher.init(SlowEvent.class, shareBufferSize);
@@ -104,7 +125,7 @@ public class NotifyCenter {
         } catch (Throwable ex) {
             LOGGER.error("Service class newInstance has error : ", ex);
         }
-        
+        // 增加关闭钩子，用于关闭Publisher
         ThreadUtils.addShutdownHook(NotifyCenter::shutdown);
     }
     
@@ -166,13 +187,14 @@ public class NotifyCenter {
     /**
      * Register a Subscriber. If the Publisher concerned by the Subscriber does not exist, then PublihserMap will
      * preempt a placeholder Publisher with specified EventPublisherFactory first.
-     *
+     * 注册订阅者实际上就是将Subscriber添加到Publisher中。因为事件的发布是靠发布者来通知它内部的所有订阅者。
      * @param consumer subscriber
      * @param factory  publisher factory.
      */
     public static void registerSubscriber(final Subscriber consumer, final EventPublisherFactory factory) {
         // If you want to listen to multiple events, you do it separately,
         // based on subclass's subscribeTypes method return list, it can register to publisher.
+        // 若想监听多个事件，实现SmartSubscriber.subscribeTypes()方法，在里面返回多个事件的列表即可
         if (consumer instanceof SmartSubscriber) {
             for (Class<? extends Event> subscribeType : ((SmartSubscriber) consumer).subscribeTypes()) {
                 // For case, producer: defaultSharePublisher -> consumer: smartSubscriber.
@@ -191,7 +213,8 @@ public class NotifyCenter {
             INSTANCE.sharePublisher.addSubscriber(consumer, subscribeType);
             return;
         }
-        
+
+        // 注册到单事件发布者中
         addSubscriber(consumer, subscribeType, factory);
     }
     
@@ -202,12 +225,15 @@ public class NotifyCenter {
      * @param subscribeType subscribeType.
      * @param factory       publisher factory.
      */
+    // 注册到单事件发布者中
     private static void addSubscriber(final Subscriber consumer, Class<? extends Event> subscribeType,
             EventPublisherFactory factory) {
         
         final String topic = ClassUtils.getCanonicalName(subscribeType);
         synchronized (NotifyCenter.class) {
+            EventPublisher apply = factory.apply(subscribeType, ringBufferSize);
             // MapUtils.computeIfAbsent is a unsafe method.
+            // 如果 publisherMap 不存在 topic 类型，则调用 factory.apply 方法创建一个新的发布者
             MapUtil.computeIfAbsent(INSTANCE.publisherMap, topic, factory, subscribeType, ringBufferSize);
         }
         EventPublisher publisher = INSTANCE.publisherMap.get(topic);
@@ -337,13 +363,15 @@ public class NotifyCenter {
      */
     public static EventPublisher registerToPublisher(final Class<? extends Event> eventType,
             final EventPublisherFactory factory, final int queueMaxSize) {
+        // 慢事件由多事件发布者处理
         if (ClassUtils.isAssignableFrom(SlowEvent.class, eventType)) {
             return INSTANCE.sharePublisher;
         }
-        
+        // 若不是慢事件，因为它可以存在多个不同的类型，因此需要判断对应的发布者是否存在
         final String topic = ClassUtils.getCanonicalName(eventType);
         synchronized (NotifyCenter.class) {
             // MapUtils.computeIfAbsent is a unsafe method.
+            // 当前传入的事件类型对应的发布者，有则忽略无则新建
             MapUtil.computeIfAbsent(INSTANCE.publisherMap, topic, factory, eventType, queueMaxSize);
         }
         return INSTANCE.publisherMap.get(topic);

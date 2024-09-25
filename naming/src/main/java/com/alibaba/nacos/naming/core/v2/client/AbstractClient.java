@@ -43,7 +43,7 @@ import static com.alibaba.nacos.naming.constants.ClientConstants.REVISION;
  */
 public abstract class AbstractClient implements Client {
     
-    protected final ConcurrentHashMap<Service, InstancePublishInfo> publishers = new ConcurrentHashMap<>(16, 0.75f, 1);
+    protected final ConcurrentHashMap<Service, InstancePublishInfo> publishers = new ConcurrentHashMap<>(16, 0.75f, 1); // 记录 service 和 instance 发布者的映射关系
     
     protected final ConcurrentHashMap<Service, Subscriber> subscribers = new ConcurrentHashMap<>(16, 0.75f, 1);
     
@@ -68,6 +68,7 @@ public abstract class AbstractClient implements Client {
     
     @Override
     public boolean addServiceInstance(Service service, InstancePublishInfo instancePublishInfo) {
+        // TODO 如果当前 client 给一个 service 注册过 instance，那么就不再注册了？？？？
         if (null == publishers.put(service, instancePublishInfo)) {
             if (instancePublishInfo instanceof BatchInstancePublishInfo) {
                 MetricsMonitor.incrementIpCountWithBatchRegister(instancePublishInfo);
@@ -75,7 +76,7 @@ public abstract class AbstractClient implements Client {
                 MetricsMonitor.incrementInstanceCount();
             }
         }
-        NotifyCenter.publishEvent(new ClientEvent.ClientChangedEvent(this));
+        NotifyCenter.publishEvent(new ClientEvent.ClientChangedEvent(this)); // 添加 持久化 service 会走到这里
         Loggers.SRV_LOG.info("Client change for service {}, {}", service, getClientId());
         return true;
     }

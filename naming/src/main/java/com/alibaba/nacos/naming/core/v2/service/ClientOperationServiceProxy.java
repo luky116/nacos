@@ -53,7 +53,7 @@ public class ClientOperationServiceProxy implements ClientOperationService {
     
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) throws NacosException {
-        final ClientOperationService operationService = chooseClientOperationService(instance); // 这里会区分临时节点还是持久化节点
+        final ClientOperationService operationService = chooseClientOperationService(instance); // 这里会区分临时节点还是持久化节点。HTTP 的方式，即支持持久化的 service，也支持临时的 service
         operationService.registerInstance(service, instance, clientId);
     }
     

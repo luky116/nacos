@@ -55,9 +55,9 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
-    
+        // 如果是第一次注册 instance，那么这个 service 是怎么来的呢：如果 ServiceManager 不存在此 service，会先放进去，再取出来
         Service singleton = ServiceManager.getInstance().getSingleton(service);
-        if (!singleton.isEphemeral()) {
+        if (!singleton.isEphemeral()) { // service 下所有的 instance 的 ephemeral 都是 true或false，不能有交叉类型存在
             throw new NacosRuntimeException(NacosException.INVALID_PARAM,
                     String.format("Current service %s is persistent service, can't register ephemeral instance.",
                             singleton.getGroupedServiceName()));
@@ -67,7 +67,7 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
             return;
         }
         InstancePublishInfo instanceInfo = getPublishInfo(instance);
-        client.addServiceInstance(singleton, instanceInfo);
+        client.addServiceInstance(singleton, instanceInfo); // 记录 service 和 instance 发布者的关系
         client.setLastUpdatedTime();
         client.recalculateRevision();
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
@@ -151,7 +151,7 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
             Loggers.SRV_LOG.warn("Client connection {} already disconnect", clientId);
             return false;
         }
-        if (!client.isEphemeral()) {
+        if (!client.isEphemeral()) { // TODO 待研究，client 为啥会有 Ephemeral 累心？？？
             Loggers.SRV_LOG.warn("Client connection {} type is not ephemeral", clientId);
             return false;
         }

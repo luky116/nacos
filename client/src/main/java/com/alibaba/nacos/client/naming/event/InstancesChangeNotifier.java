@@ -40,9 +40,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 1.4.1
  */
 public class InstancesChangeNotifier extends Subscriber<InstancesChangeEvent> {
-    
+
     private final String eventScope;
-    
+
+    // key使用serviceName + groupName + clusters组合而成
+    // value是监听器集合
     private final Map<String, ConcurrentHashSet<EventListener>> listenerMap = new ConcurrentHashMap<>();
     
     private final Object lock = new Object();

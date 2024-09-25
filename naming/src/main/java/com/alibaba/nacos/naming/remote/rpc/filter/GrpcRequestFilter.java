@@ -39,7 +39,7 @@ public class GrpcRequestFilter extends AbstractRequestFilter {
     
     @Override
     protected Response filter(Request request, RequestMeta meta, Class handlerClazz) throws NacosException {
-        if (request instanceof AbstractNamingRequest && !upgradeJudgement.isUseGrpcFeatures()) {
+        if (request instanceof AbstractNamingRequest && !upgradeJudgement.isUseGrpcFeatures()) { // 如果当前 Nacos 版本>=2.0，才支持 gRPC；否则直接返回错误
             Response response = getDefaultResponseInstance(handlerClazz);
             response.setErrorInfo(NacosException.SERVER_ERROR,
                     "Nacos cluster is running with 1.X mode, can't accept gRPC request temporarily. Please check the server status or close Double write to force open 2.0 mode. Detail https://nacos.io/en-us/docs/2.0.0-upgrading.html.");

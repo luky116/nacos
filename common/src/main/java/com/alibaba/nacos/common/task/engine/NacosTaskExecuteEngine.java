@@ -49,6 +49,7 @@ public interface NacosTaskExecuteEngine<T extends NacosTask> extends Closeable {
      * @param key           key of task
      * @param taskProcessor task processor
      */
+    // 添加 task 的处理器
     void addProcessor(Object key, NacosTaskProcessor taskProcessor);
     
     /**

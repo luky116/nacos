@@ -43,6 +43,8 @@ import static com.alibaba.nacos.core.remote.grpc.BaseGrpcServer.CONTEXT_KEY_CONN
  *
  * @author liuzunfei
  * @version $Id: GrpcCommonRequestAcceptor.java, v 0.1 2020年09月01日 10:52 AM liuzunfei Exp $
+ *
+ * RPC 请求的接受入口
  */
 @Service
 public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
@@ -68,7 +70,8 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
         }
         
     }
-    
+
+    // RPC 请求的处理入口
     @Override
     public void request(Payload grpcRequest, StreamObserver<Payload> responseObserver) {
         
@@ -158,14 +161,19 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
         
         Request request = (Request) parseObj;
         try {
+            // 获取连接
             Connection connection = connectionManager.getConnection(CONTEXT_KEY_CONN_ID.get());
             RequestMeta requestMeta = new RequestMeta();
             requestMeta.setClientIp(connection.getMetaInfo().getClientIp());
             requestMeta.setConnectionId(CONTEXT_KEY_CONN_ID.get());
             requestMeta.setClientVersion(connection.getMetaInfo().getVersion());
             requestMeta.setLabels(connection.getMetaInfo().getLabels());
+            // 刷新活跃时间，根据这个时间看是否超时的
             connectionManager.refreshActiveTime(requestMeta.getConnectionId());
+
+            // 重点！！！实际处理请求的地方
             Response response = requestHandler.handleRequest(request, requestMeta);
+            // 拿到请求解析，完成请求
             Payload payloadResponse = GrpcUtils.convert(response);
             traceIfNecessary(payloadResponse, false);
             responseObserver.onNext(payloadResponse);

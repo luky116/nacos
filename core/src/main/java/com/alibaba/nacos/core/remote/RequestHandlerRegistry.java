@@ -36,6 +36,8 @@ import java.util.Map;
 /**
  * RequestHandlerRegistry.
  *
+ * 维护了 Request 和对应的 handler 的映射关系
+ *
  * @author liuzunfei
  * @version $Id: RequestHandlerRegistry.java, v 0.1 2020年07月13日 8:24 PM liuzunfei Exp $
  */

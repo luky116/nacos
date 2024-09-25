@@ -99,7 +99,7 @@ public class PersistentClientOperationServiceImpl extends RequestProcessor4CP im
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) {
         Service singleton = ServiceManager.getInstance().getSingleton(service);
-        if (singleton.isEphemeral()) {
+        if (singleton.isEphemeral()) { // 一个 service 下的所有 instance 的"临时或持久"属性都是一致的
             throw new NacosRuntimeException(NacosException.INVALID_PARAM,
                     String.format("Current service %s is ephemeral service, can't register persistent instance.",
                             singleton.getGroupedServiceName()));
@@ -113,7 +113,7 @@ public class PersistentClientOperationServiceImpl extends RequestProcessor4CP im
                 .build();
         
         try {
-            protocol.write(writeRequest);
+            protocol.write(writeRequest); // 持久化的 service 走 JRAFT 一致性协议
             Loggers.RAFT.info("Client registered. service={}, clientId={}, instance={}", service, instance, clientId);
         } catch (Exception e) {
             throw new NacosRuntimeException(NacosException.SERVER_ERROR, e);
@@ -184,7 +184,7 @@ public class PersistentClientOperationServiceImpl extends RequestProcessor4CP im
     }
     
     @Override
-    public Response onApply(WriteRequest request) {
+    public Response onApply(WriteRequest request) { // 如果此请求已经同步给大多数的 raft node， Raft onApply 会调用此方法
         final InstanceStoreRequest instanceRequest = serializer.deserialize(request.getData().toByteArray());
         final DataOperation operation = DataOperation.valueOf(request.getOperation());
         final Lock lock = readLock;
@@ -219,14 +219,14 @@ public class PersistentClientOperationServiceImpl extends RequestProcessor4CP im
                 instanceRequest.getClientId()).getAllPublishedService().contains(instanceRequest.service);
     }
     
-    private void onInstanceRegister(Service service, Instance instance, String clientId) {
+    private void onInstanceRegister(Service service, Instance instance, String clientId) { // Raft onApply 会调用此类的 onApply方法，再继续调用这个方法
         Service singleton = ServiceManager.getInstance().getSingleton(service);
         if (!clientManager.contains(clientId)) {
             clientManager.clientConnected(clientId, new ClientAttributes());
         }
         Client client = clientManager.getClient(clientId);
         InstancePublishInfo instancePublishInfo = getPublishInfo(instance);
-        client.addServiceInstance(singleton, instancePublishInfo);
+        client.addServiceInstance(singleton, instancePublishInfo); // 将 instance 注册到 client 中
         client.setLastUpdatedTime();
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
     }

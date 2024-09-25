@@ -53,18 +53,22 @@ public class DefaultPublisher extends Thread implements EventPublisher {
     private int queueMaxSize = -1;
     
     private BlockingQueue<Event> queue;
-    
+
+    // 最大的事件序号，事件每次产生都会有个事件序号
     protected volatile Long lastEventSequence = -1L;
-    
+
+    // 用于判断事件是否过期
     private static final AtomicReferenceFieldUpdater<DefaultPublisher, Long> UPDATER = AtomicReferenceFieldUpdater
             .newUpdater(DefaultPublisher.class, Long.class, "lastEventSequence");
     
     @Override
     public void init(Class<? extends Event> type, int bufferSize) {
+        // 设置后台线程，当服务关闭的时候会自动关闭
         setDaemon(true);
         setName("nacos.publisher-" + type.getName());
         this.eventType = type;
         this.queueMaxSize = bufferSize;
+        // 创建阻塞队列
         this.queue = new ArrayBlockingQueue<>(bufferSize);
         start();
     }
@@ -77,6 +81,7 @@ public class DefaultPublisher extends Thread implements EventPublisher {
     public synchronized void start() {
         if (!initialized) {
             // start just called once
+            // 保证只启动一次，调用父类，告诉JVM去进行线程启动
             super.start();
             if (queueMaxSize == -1) {
                 queueMaxSize = ringBufferSize;
@@ -102,6 +107,7 @@ public class DefaultPublisher extends Thread implements EventPublisher {
             int waitTimes = 60;
             // To ensure that messages are not lost, enable EventHandler when
             // waiting for the first Subscriber to register
+            // 等待 60 秒，确保所有的 Subscriber 都注册完成（或至少有一个 Subscriber 注册）
             for (; ; ) {
                 if (shutdown || hasSubscriber() || waitTimes <= 0) {
                     break;
@@ -114,7 +120,9 @@ public class DefaultPublisher extends Thread implements EventPublisher {
                 if (shutdown) {
                     break;
                 }
+                // 从阻塞队列中取出事件
                 final Event event = queue.take();
+                // 处理事件
                 receiveEvent(event);
                 UPDATER.compareAndSet(this, lastEventSequence, Math.max(lastEventSequence, event.sequence()));
             }
@@ -185,6 +193,7 @@ public class DefaultPublisher extends Thread implements EventPublisher {
             }
             
             // Whether to ignore expiration events
+            // 如果已经过期了，不进行处理
             if (subscriber.ignoreExpireEvent() && lastEventSequence > currentEventSequence) {
                 LOGGER.debug("[NotifyCenter] the {} is unacceptable to this subscriber, because had expire",
                         event.getClass());

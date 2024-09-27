@@ -60,6 +60,7 @@ public class DistroProtocol {
     }
     
     private void startDistroTask() {
+        // 单机模式下不需要进行初始化
         if (EnvUtil.getStandaloneMode()) {
             isInitialized = true;
             return;
@@ -80,11 +81,13 @@ public class DistroProtocol {
                 isInitialized = false;
             }
         };
+        // 执行数据加载导入，只执行一次
         GlobalExecutor.submitLoadDataTask(
                 new DistroLoadDataTask(memberManager, distroComponentHolder, DistroConfig.getInstance(), loadCallback));
     }
     
     private void startVerifyTask() {
+        // 固定每次间隔5s执行验证处理
         GlobalExecutor.schedulePartitionDataTimedSync(new DistroVerifyTimedTask(memberManager, distroComponentHolder,
                         distroTaskEngineHolder.getExecuteWorkersManager()),
                 DistroConfig.getInstance().getVerifyIntervalMillis());
@@ -100,6 +103,7 @@ public class DistroProtocol {
      * @param distroKey distro key of sync data
      * @param action    the action of data operation
      */
+//    通过配置的延迟开始同步，默认1s
     public void sync(DistroKey distroKey, DataOperation action) {
         sync(distroKey, action, DistroConfig.getInstance().getSyncDelayMillis());
     }
@@ -111,6 +115,7 @@ public class DistroProtocol {
      * @param action    the action of data operation
      * @param delay     delay time for sync
      */
+//    将数据同步到所有远程服务器
     public void sync(DistroKey distroKey, DataOperation action, long delay) {
         for (Member each : memberManager.allMembersWithoutSelf()) {
             syncToTarget(distroKey, action, each.getAddress(), delay);
@@ -125,6 +130,7 @@ public class DistroProtocol {
      * @param targetServer target server
      * @param delay        delay time for sync
      */
+//    同步到目标服务器
     public void syncToTarget(DistroKey distroKey, DataOperation action, String targetServer, long delay) {
         DistroKey distroKeyWithTarget = new DistroKey(distroKey.getResourceKey(), distroKey.getResourceType(),
                 targetServer);
@@ -141,6 +147,7 @@ public class DistroProtocol {
      * @param distroKey data key
      * @return data
      */
+//    从指定服务器查询数据
     public DistroData queryFromRemote(DistroKey distroKey) {
         if (null == distroKey.getTargetServer()) {
             Loggers.DISTRO.warn("[DISTRO] Can't query data from empty server");
@@ -161,6 +168,7 @@ public class DistroProtocol {
      * @param distroData Received data
      * @return true if handle receive data successfully, otherwise false
      */
+//    接收同步的distro数据，查找响应的处理器的处理
     public boolean onReceive(DistroData distroData) {
         Loggers.DISTRO.info("[DISTRO] Receive distro data type: {}, key: {}", distroData.getType(),
                 distroData.getDistroKey());
@@ -180,6 +188,7 @@ public class DistroProtocol {
      * @param sourceAddress source server address, might be get data from source server
      * @return true if verify data successfully, otherwise false
      */
+//    接收验证数据，查找响应的处理器的处理
     public boolean onVerify(DistroData distroData, String sourceAddress) {
         if (Loggers.DISTRO.isDebugEnabled()) {
             Loggers.DISTRO.debug("[DISTRO] Receive verify data type: {}, key: {}", distroData.getType(),
@@ -200,6 +209,7 @@ public class DistroProtocol {
      * @param distroKey key of data
      * @return data
      */
+//    根据input distro key查找数据
     public DistroData onQuery(DistroKey distroKey) {
         String resourceType = distroKey.getResourceType();
         DistroDataStorage distroDataStorage = distroComponentHolder.findDataStorage(resourceType);
@@ -216,6 +226,7 @@ public class DistroProtocol {
      * @param type datum type
      * @return all datum snapshot
      */
+//    查询所有快照数据
     public DistroData onSnapshot(String type) {
         DistroDataStorage distroDataStorage = distroComponentHolder.findDataStorage(type);
         if (null == distroDataStorage) {

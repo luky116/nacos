@@ -54,8 +54,10 @@ public class DistroVerifyExecuteTask extends AbstractExecuteTask {
         for (DistroData each : verifyData) {
             try {
                 if (transportAgent.supportCallbackTransport()) {
+                    // 支持回调的处理方法
                     doSyncVerifyDataWithCallback(each);
                 } else {
+                    // 不支持回调的处理方法
                     doSyncVerifyData(each);
                 }
             } catch (Exception e) {

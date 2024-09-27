@@ -50,11 +50,13 @@ public class DistroVerifyTimedTask implements Runnable {
     @Override
     public void run() {
         try {
+            // 获取非本机的其他服务节点
             List<Member> targetServer = serverMemberManager.allMembersWithoutSelf();
             if (Loggers.DISTRO.isDebugEnabled()) {
                 Loggers.DISTRO.debug("server list is: {}", targetServer);
             }
             for (String each : distroComponentHolder.getDataStorageTypes()) {
+                // 根据类型来验证，这个类型代表着协议类型，2.2.0的版本只会用Grpc的类型
                 verifyForDataStorage(each, targetServer);
             }
         } catch (Exception e) {
@@ -69,6 +71,7 @@ public class DistroVerifyTimedTask implements Runnable {
                     dataStorage.getClass().getSimpleName());
             return;
         }
+        // 拿到验证的数据
         List<DistroData> verifyData = dataStorage.getVerifyData();
         if (null == verifyData || verifyData.isEmpty()) {
             return;
@@ -78,6 +81,7 @@ public class DistroVerifyTimedTask implements Runnable {
             if (null == agent) {
                 continue;
             }
+            // 通过执行器执行
             executeTaskExecuteEngine.addTask(member.getAddress() + type,
                     new DistroVerifyExecuteTask(agent, verifyData, member.getAddress(), type));
         }

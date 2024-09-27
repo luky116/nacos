@@ -90,6 +90,7 @@ public class WatchFileCenter {
         WatchDirJob job = MANAGER.get(paths);
         if (job == null) {
             job = new WatchDirJob(paths);
+            // 异步处理
             job.start();
             MANAGER.put(paths, job);
             NOW_WATCH_JOB_CNT++;
@@ -196,6 +197,7 @@ public class WatchFileCenter {
         
         @Override
         public void run() {
+            // 一直循环监控
             while (watch) {
                 try {
                     final WatchKey watchKey = watchService.take();
@@ -207,6 +209,7 @@ public class WatchFileCenter {
                     if (events.isEmpty()) {
                         continue;
                     }
+                    // 文件监控线程池进行处理
                     callBackExecutor.execute(() -> {
                         for (WatchEvent<?> event : events) {
                             WatchEvent.Kind<?> kind = event.kind();
@@ -215,6 +218,7 @@ public class WatchFileCenter {
                             if (StandardWatchEventKinds.OVERFLOW.equals(kind)) {
                                 eventOverflow();
                             } else {
+                                // 处理监控文件时间逻辑
                                 eventProcess(event.context());
                             }
                         }
@@ -228,14 +232,17 @@ public class WatchFileCenter {
         }
         
         private void eventProcess(Object context) {
+            // 构造文件变动事件
             final FileChangeEvent fileChangeEvent = FileChangeEvent.builder().paths(paths).context(context).build();
             final String str = String.valueOf(context);
+            // 构造触发事件
             for (final FileWatcher watcher : watchers) {
                 if (watcher.interest(str)) {
                     Runnable job = () -> watcher.onChange(fileChangeEvent);
                     Executor executor = watcher.executor();
                     if (executor == null) {
                         try {
+                            // 直接执行
                             job.run();
                         } catch (Throwable ex) {
                             LOGGER.error("File change event callback error : ", ex);

@@ -286,12 +286,15 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     @Override
     public List<DistroData> getVerifyData() {
         List<DistroData> result = null;
+        // 对每个本机所管理的注册客户端进行处理
         for (String each : clientManager.allClientId()) {
             Client client = clientManager.getClient(each);
             if (null == client || !client.isEphemeral()) {
                 continue;
             }
+            // 如果是自己管理的客户端
             if (clientManager.isResponsibleClient(client)) {
+                // 需要验证的数据就是每个节点的clientId和revision
                 DistroClientVerifyInfo verifyData = new DistroClientVerifyInfo(client.getClientId(),
                         client.getRevision());
                 DistroKey distroKey = new DistroKey(client.getClientId(), TYPE);

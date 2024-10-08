@@ -69,6 +69,8 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import static com.alibaba.nacos.api.exception.NacosException.CLIENT_INVALID_PARAM;
 
 /**
+ * 负责管理 Nacos 集群的节点信息
+ *
  * Cluster node management in Nacos.
  *
  * <p>{@link ServerMemberManager#init()} Cluster node manager initialization {@link ServerMemberManager#shutdown()} The
@@ -161,10 +163,12 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         
         // init abilities.
         this.self.setAbilities(initMemberAbilities());
-        
+
+        // 处理本机ip
         serverList.put(self.getAddress(), self);
         
         // register NodeChangeEvent publisher to NotifyManager
+        // 注册NodeChangeEvent publisher到NotifyManager
         registerClusterEvent();
         
         // Initializes the lookup mode
@@ -193,6 +197,8 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         
         // The address information of this node needs to be dynamically modified
         // when registering the IP change of this node
+        // 注册一个ip变动监听器，可以动态更新本机ip
+        // TODO 只关心自己这个机器的IP变化吗？别的 member 变化不关心是吗？
         NotifyCenter.registerSubscriber(new Subscriber<InetUtils.IPChangeEvent>() {
             @Override
             public void onEvent(InetUtils.IPChangeEvent event) {
@@ -219,8 +225,10 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
     }
     
     private void initAndStartLookup() throws NacosException {
+        // 获取到MemberLookup
         this.lookup = LookupFactory.createLookUp(this);
         isUseAddressServer = this.lookup.useAddressServer();
+        // 对文件进行监控
         this.lookup.start();
     }
     

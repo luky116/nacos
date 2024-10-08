@@ -43,7 +43,7 @@ public class InstanceRequestHandler extends RequestHandler<InstanceRequest, Inst
     private final EphemeralClientOperationServiceImpl clientOperationService;
     
     public InstanceRequestHandler(EphemeralClientOperationServiceImpl clientOperationService) {
-        this.clientOperationService = clientOperationService;
+        this.clientOperationService = clientOperationService; // 因为只有临时的 service 会走 gRPC 进行注册，所以这里直接写死了 EphemeralClientOperationServiceImpl
     }
     
     @Override
@@ -52,8 +52,10 @@ public class InstanceRequestHandler extends RequestHandler<InstanceRequest, Inst
         Service service = Service
                 .newService(request.getNamespace(), request.getGroupName(), request.getServiceName(), true);
         switch (request.getType()) {
+            // 注册 instance
             case NamingRemoteConstants.REGISTER_INSTANCE:
                 return registerInstance(service, request, meta);
+            // 下线 instance
             case NamingRemoteConstants.DE_REGISTER_INSTANCE:
                 return deregisterInstance(service, request, meta);
             default:
@@ -61,16 +63,20 @@ public class InstanceRequestHandler extends RequestHandler<InstanceRequest, Inst
                         String.format("Unsupported request type %s", request.getType()));
         }
     }
-    
+
+    // 服务注册
     private InstanceResponse registerInstance(Service service, InstanceRequest request, RequestMeta meta)
             throws NacosException {
+        // 注册实例
         clientOperationService.registerInstance(service, request.getInstance(), meta.getConnectionId());
+        // 发布事件
         NotifyCenter.publishEvent(new RegisterInstanceTraceEvent(System.currentTimeMillis(),
                 meta.getClientIp(), true, service.getNamespace(), service.getGroup(), service.getName(),
                 request.getInstance().getIp(), request.getInstance().getPort()));
         return new InstanceResponse(NamingRemoteConstants.REGISTER_INSTANCE);
     }
-    
+
+    // 服务下线
     private InstanceResponse deregisterInstance(Service service, InstanceRequest request, RequestMeta meta) {
         clientOperationService.deregisterInstance(service, request.getInstance(), meta.getConnectionId());
         NotifyCenter.publishEvent(new DeregisterInstanceTraceEvent(System.currentTimeMillis(),

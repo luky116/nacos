@@ -276,13 +276,15 @@ public abstract class RpcClient implements Closeable {
                 }
             }
         });
-        
+
+        // TODO 超时探活逻辑
         clientEventExecutor.submit(() -> {
             while (true) {
                 try {
                     if (isShutdown()) {
                         break;
                     }
+                    // 如果超过了连接保活时间，没有任何请求，就会发起健康检查
                     ReconnectContext reconnectContext = reconnectionSignal
                             .poll(rpcClientConfig.connectionKeepAlive(), TimeUnit.MILLISECONDS);
                     if (reconnectContext == null) {

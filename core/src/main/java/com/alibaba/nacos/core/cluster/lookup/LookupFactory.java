@@ -49,12 +49,14 @@ public final class LookupFactory {
      * @throws NacosException NacosException
      */
     public static MemberLookup createLookUp(ServerMemberManager memberManager) throws NacosException {
+        // 非单机模式
         if (!EnvUtil.getStandaloneMode()) {
             String lookupType = EnvUtil.getProperty(LOOKUP_MODE_TYPE);
             LookupType type = chooseLookup(lookupType);
             LOOK_UP = find(type);
             currentLookupType = type;
         } else {
+            // 单机模式
             LOOK_UP = new StandaloneMemberLookup();
         }
         LOOK_UP.injectMemberManager(memberManager);
@@ -108,15 +110,18 @@ public final class LookupFactory {
     
     private static LookupType chooseLookup(String lookupType) {
         if (StringUtils.isNotBlank(lookupType)) {
+            // 配置了直接用配置的
             LookupType type = LookupType.sourceOf(lookupType);
             if (Objects.nonNull(type)) {
                 return type;
             }
         }
+        // 优先判断cluster.conf是否存在，存在就用文件模式
         File file = new File(EnvUtil.getClusterConfFilePath());
         if (file.exists() || StringUtils.isNotBlank(EnvUtil.getMemberList())) {
             return LookupType.FILE_CONFIG;
         }
+        // 非文件就用配置文件application.properties的配置的 nacos.member.list 属性
         return LookupType.ADDRESS_SERVER;
     }
     

@@ -44,6 +44,7 @@ public class PushDelayTaskExecuteEngine extends NacosDelayTaskExecuteEngine {
     
     private final NamingMetadataManager metadataManager;
 
+    // 类型是 PushExecutorDelegate
     private final PushExecutor pushExecutor;
     
     private final SwitchDomain switchDomain;
@@ -58,6 +59,7 @@ public class PushDelayTaskExecuteEngine extends NacosDelayTaskExecuteEngine {
         this.metadataManager = metadataManager;
         this.pushExecutor = pushExecutor;
         this.switchDomain = switchDomain;
+        // TaskProcessor 和 TaskExecuteEngine 之间的关系？：解答：TaskProcessor 是用来处理任务的，而 TaskExecuteEngine 用来管理任务。TaskExecuteEngine 中调用 TaskProcessor 来处理任务
         setDefaultTaskProcessor(new PushDelayTaskProcessor(this));
     }
     
@@ -101,6 +103,8 @@ public class PushDelayTaskExecuteEngine extends NacosDelayTaskExecuteEngine {
         public boolean process(NacosTask task) {
             PushDelayTask pushDelayTask = (PushDelayTask) task;
             Service service = pushDelayTask.getService();
+            // 分配并处理任务
+            // NamingExecuteTaskDispatcher.getInstance() 使用的是：PushExecutorDelegate
             NamingExecuteTaskDispatcher.getInstance()
                     .dispatchAndExecuteTask(service, new PushExecuteTask(service, executeEngine, pushDelayTask));
             return true;

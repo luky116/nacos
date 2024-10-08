@@ -50,6 +50,7 @@ public class ConnectionBasedClientManager extends ClientConnectionEventListener 
     private final ConcurrentMap<String, ConnectionBasedClient> clients = new ConcurrentHashMap<>();
     
     public ConnectionBasedClientManager() {
+        // 定时清理失效的 client
         GlobalExecutor
                 .scheduleExpiredClientCleaner(new ExpiredClientCleaner(this), 0, Constants.DEFAULT_HEART_BEAT_INTERVAL,
                         TimeUnit.MILLISECONDS);
@@ -95,14 +96,21 @@ public class ConnectionBasedClientManager extends ClientConnectionEventListener 
     }
     
     @Override
-    public boolean clientDisconnected(String clientId) {
+    public boolean clientDisconnected(String clientId) { // 1726209555434_127.0.0.1_63965
         Loggers.SRV_LOG.info("Client connection {} disconnect, remove instances and subscribers", clientId);
         ConnectionBasedClient client = clients.remove(clientId);
         if (null == client) {
             return true;
         }
         client.release();
-        NotifyCenter.publishEvent(new ClientEvent.ClientDisconnectEvent(client, isResponsibleClient(client)));
+
+        // 发布客户端断开连接事件
+        /**
+         * 具体处理是在：{@link com.alibaba.nacos.naming.core.v2.metadata.NamingMetadataManager.onEvent}
+         * 主要做了下面几个事情：
+         * 1、将服务实例元数据添加到过期集合中
+         */
+        NotifyCenter.publishEvent(new ClientEvent.ClientDisconnectEvent(client, isResponsibleClient(client))); // 发布 client 断开连接的事件
         return true;
     }
     
@@ -155,7 +163,9 @@ public class ConnectionBasedClientManager extends ClientConnectionEventListener 
             long currentTime = System.currentTimeMillis();
             for (String each : clientManager.allClientId()) {
                 ConnectionBasedClient client = (ConnectionBasedClient) clientManager.getClient(each);
+                // 判断 client 是否超时
                 if (null != client && client.isExpire(currentTime)) {
+                    // 超时连接处理
                     clientManager.clientDisconnected(each);
                 }
             }

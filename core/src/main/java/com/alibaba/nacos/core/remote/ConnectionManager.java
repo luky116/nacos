@@ -50,18 +50,19 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author liuzunfei
  * @version $Id: ConnectionManager.java, v 0.1 2020年07月13日 7:07 PM liuzunfei Exp $
+ * 负责管理好连接，以及连接的探活时间
  */
 @Service
 public class ConnectionManager {
-    
+
     private static final Logger LOGGER = com.alibaba.nacos.plugin.control.Loggers.CONNECTION;
     
-    private Map<String, AtomicInteger> connectionForClientIp = new ConcurrentHashMap<>(16);
+    private Map<String, AtomicInteger> connectionForClientIp = new ConcurrentHashMap<>(16); // IP 的连接个数
     
-    Map<String, Connection> connections = new ConcurrentHashMap<>();
+    Map<String, Connection> connections = new ConcurrentHashMap<>(); // client 连接信息
     
     private RuntimeConnectionEjector runtimeConnectionEjector;
-    
+
     private ClientConnectionEventListenerRegistry clientConnectionEventListenerRegistry;
     
     public ConnectionManager(ClientConnectionEventListenerRegistry clientConnectionEventListenerRegistry) {
@@ -117,7 +118,7 @@ public class ConnectionManager {
             connectionForClientIp.get(clientIp).getAndIncrement();
             
             clientConnectionEventListenerRegistry.notifyClientConnected(connection);
-            
+
             LOGGER.info("new connection registered successfully, connectionId = {},connection={} ", connectionId,
                     connection);
             return true;
@@ -146,9 +147,12 @@ public class ConnectionManager {
      * @param connectionId connectionId.
      */
     public synchronized void unregister(String connectionId) {
+        // 移除该 client 连接
         Connection remove = this.connections.remove(connectionId);
         if (remove != null) {
+            // 192.168.85.124
             String clientIp = remove.getMetaInfo().clientIp;
+            // 2
             AtomicInteger atomicInteger = connectionForClientIp.get(clientIp);
             if (atomicInteger != null) {
                 int count = atomicInteger.decrementAndGet();
@@ -156,8 +160,10 @@ public class ConnectionManager {
                     connectionForClientIp.remove(clientIp);
                 }
             }
+            // 关闭 TCP 连接
             remove.close();
             LOGGER.info("[{}]Connection unregistered successfully. ", connectionId);
+            // 通知其他客户端，本客户端已经断开连接
             clientConnectionEventListenerRegistry.notifyClientDisConnected(remove);
         }
     }
@@ -208,7 +214,7 @@ public class ConnectionManager {
         } catch (Throwable throwable) {
             Loggers.CONNECTION.warn("Fail to load  runtime ejector ", throwable);
         }
-        
+
         if (runtimeConnectionEjector == null) {
             Loggers.CONNECTION
                     .info("Fail to find connection runtime ejector for name {},use default", connectionRuntimeEjector);
@@ -217,7 +223,7 @@ public class ConnectionManager {
             runtimeConnectionEjector = nacosRuntimeConnectionEjector;
         }
     }
-    
+
     /**
      * get current connections count.
      *
@@ -247,12 +253,13 @@ public class ConnectionManager {
         
         initConnectionEjector();
         // Start UnHealthy Connection Expel Task.
+        // 对不健康的实例连接进行删除。定时任务，每3秒执行一次
         RpcScheduledExecutor.COMMON_SERVER_EXECUTOR.scheduleWithFixedDelay(() -> {
             runtimeConnectionEjector.doEject();
         }, 1000L, 3000L, TimeUnit.MILLISECONDS);
         
     }
-    
+
     public void loadCount(int loadClient, String redirectAddress) {
         runtimeConnectionEjector.setLoadClient(loadClient);
         runtimeConnectionEjector.setRedirectAddress(redirectAddress);
@@ -298,10 +305,11 @@ public class ConnectionManager {
     
     /**
      * get client count with labels filter.
-     *
+     *  根据 label 来过滤/查找 client 数量
      * @param filterLabels label to filter client count.
      * @return count with the specific filter labels.
      */
+    // filterLabels = source->sdk
     public int currentClientsCount(Map<String, String> filterLabels) {
         int count = 0;
         for (Connection connection : connections.values()) {

@@ -55,10 +55,11 @@ public abstract class BaseRpcServer {
         String serverName = getClass().getSimpleName();
         String tlsConfig = JacksonUtils.toJson(grpcServerConfig);
         Loggers.REMOTE.info("Nacos {} Rpc server starting at port {} and tls config:{}", serverName, getServicePort(), tlsConfig);
-        
+        // 启动Grpc的服务端
         startServer();
     
         Loggers.REMOTE.info("Nacos {} Rpc server started at port {} and tls config:{}", serverName, getServicePort(), tlsConfig);
+        // 添加一个关闭的钩子函数，当虚拟机接受关闭退出信号的时候关闭服务，具体的也就是关闭Grpc的服务端
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             Loggers.REMOTE.info("Nacos {} Rpc server stopping", serverName);
             try {

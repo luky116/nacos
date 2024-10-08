@@ -99,7 +99,7 @@ public class InstanceController {
      */
     @CanDistro
     @PostMapping
-    @Secured(action = ActionTypes.WRITE)
+    @Secured(action = ActionTypes.WRITE) // 持久化的 service 在这里注册
     public String register(HttpServletRequest request) throws Exception {
         
         final String namespaceId = WebUtils

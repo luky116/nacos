@@ -36,9 +36,11 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author xiweng.yy
  */
 public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<AbstractDelayTask> {
-    
+
+    // 执行器，类似线程池
     private final ScheduledExecutorService processingExecutor;
-    
+
+    // 待处理的任务队列
     protected final ConcurrentHashMap<Object, AbstractDelayTask> tasks;
     
     protected final ReentrantLock lock = new ReentrantLock();
@@ -62,7 +64,9 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
     public NacosDelayTaskExecuteEngine(String name, int initCapacity, Logger logger, long processInterval) {
         super(logger);
         tasks = new ConcurrentHashMap<>(initCapacity);
+        // 创建了一个单线程的定时任务线程池
         processingExecutor = ExecutorFactory.newSingleScheduledExecutorService(new NameThreadFactory(name));
+        // 开启线程池，默认每隔100ms执行ProcessRunnable
         processingExecutor
                 .scheduleWithFixedDelay(new ProcessRunnable(), processInterval, processInterval, TimeUnit.MILLISECONDS);
     }
@@ -151,6 +155,7 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
             }
             try {
                 // ReAdd task if process failed
+                // 如果任务执行失败，将任务重新添加会队列中
                 if (!processor.process(task)) {
                     retryFailedTask(taskKey, task);
                 }
@@ -165,12 +170,14 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
         task.setLastProcessTime(System.currentTimeMillis());
         addTask(key, task);
     }
-    
+
+    // executor 会定时触发的就是这个类
     private class ProcessRunnable implements Runnable {
         
         @Override
         public void run() {
             try {
+                // 处理任务
                 processTasks();
             } catch (Throwable e) {
                 getEngineLog().error(e.toString(), e);

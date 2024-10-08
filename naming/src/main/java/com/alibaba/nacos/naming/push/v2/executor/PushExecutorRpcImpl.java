@@ -51,6 +51,7 @@ public class PushExecutorRpcImpl implements PushExecutor {
             NamingPushCallback callBack) {
         ServiceInfo actualServiceInfo = getServiceInfo(data, subscriber);
         callBack.setActualServiceInfo(actualServiceInfo);
+        // 构建一个NotifySubscriberRequest，通过grpc向客户端发送信息
         pushService.pushWithCallback(clientId, NotifySubscriberRequest.buildNotifySubscriberRequest(actualServiceInfo),
                 callBack, GlobalExecutor.getCallbackExecutor());
     }

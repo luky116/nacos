@@ -61,6 +61,7 @@ public class DistroClientComponentRegistry {
     
     /**
      * Register necessary component to distro protocol for v2 {@link com.alibaba.nacos.naming.core.v2.client.Client}
+     * 为v2的发行版协议注册必要的组件
      * implement.
      */
     @PostConstruct
@@ -69,6 +70,8 @@ public class DistroClientComponentRegistry {
         DistroTransportAgent transportAgent = new DistroClientTransportAgent(clusterRpcClientProxy,
                 serverMemberManager);
         DistroClientTaskFailedHandler taskFailedHandler = new DistroClientTaskFailedHandler(taskEngineHolder);
+
+        // 给componentHolder注册相关处理类
         componentHolder.registerDataStorage(DistroClientDataProcessor.TYPE, dataProcessor);
         componentHolder.registerDataProcessor(dataProcessor);
         componentHolder.registerTransportAgent(DistroClientDataProcessor.TYPE, transportAgent);

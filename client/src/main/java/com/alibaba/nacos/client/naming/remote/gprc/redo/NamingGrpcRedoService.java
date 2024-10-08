@@ -98,6 +98,7 @@ public class NamingGrpcRedoService implements ConnectionEventListener {
      * @param groupName   group name
      * @param instance    registered instance
      */
+    // TODO redo 的含义是啥？？？
     public void cacheInstanceForRedo(String serviceName, String groupName, Instance instance) {
         String key = NamingUtils.getGroupedName(serviceName, groupName);
         InstanceRedoData redoData = InstanceRedoData.build(serviceName, groupName, instance);

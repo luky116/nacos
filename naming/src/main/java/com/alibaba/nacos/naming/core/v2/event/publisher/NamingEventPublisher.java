@@ -37,23 +37,23 @@ import java.util.concurrent.Executor;
  * @author xiweng.yy
  */
 public class NamingEventPublisher extends Thread implements ShardedEventPublisher {
-    
+
     private static final String THREAD_NAME = "naming.publisher-";
-    
+
     private static final int DEFAULT_WAIT_TIME = 60;
-    
+
     private final Map<Class<? extends Event>, Set<Subscriber<? extends Event>>> subscribes = new ConcurrentHashMap<>();
-    
+
     private volatile boolean initialized = false;
-    
+
     private volatile boolean shutdown = false;
-    
+
     private int queueMaxSize = -1;
-    
-    private BlockingQueue<Event> queue;
-    
+
+    private BlockingQueue<Event> queue; // 存储待发布的 event
+
     private String publisherName;
-    
+
     @Override
     public void init(Class<? extends Event> type, int bufferSize) {
         this.queueMaxSize = bufferSize;
@@ -64,28 +64,28 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
         super.start();
         initialized = true;
     }
-    
+
     @Override
     public long currentEventSize() {
         return this.queue.size();
     }
-    
+
     @Override
     public void addSubscriber(Subscriber subscriber) {
         addSubscriber(subscriber, subscriber.subscribeType());
     }
-    
+
     @Override
     public void addSubscriber(Subscriber subscriber, Class<? extends Event> subscribeType) {
         subscribes.computeIfAbsent(subscribeType, inputType -> new ConcurrentHashSet<>());
         subscribes.get(subscribeType).add(subscriber);
     }
-    
+
     @Override
     public void removeSubscriber(Subscriber subscriber) {
         removeSubscriber(subscriber, subscriber.subscribeType());
     }
-    
+
     @Override
     public void removeSubscriber(Subscriber subscriber, Class<? extends Event> subscribeType) {
         subscribes.computeIfPresent(subscribeType, (inputType, subscribers) -> {
@@ -93,9 +93,9 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
             return subscribers.isEmpty() ? null : subscribers;
         });
     }
-    
+
     @Override
-    public boolean publish(Event event) {
+    public boolean publish(Event event) { // ClientEvent$ClientDisconnectEvent
         checkIsStart();
         boolean success = this.queue.offer(event);
         if (!success) {
@@ -104,16 +104,17 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
         }
         return true;
     }
-    
+
     @Override
     public void notifySubscriber(Subscriber subscriber, Event event) {
         if (Loggers.EVT_LOG.isDebugEnabled()) {
             Loggers.EVT_LOG.debug("[NotifyCenter] the {} will received by {}", event, subscriber);
         }
+        // 实际处理 event 的逻辑，这里会封装成一个线程任务
         final Runnable job = () -> subscriber.onEvent(event);
         final Executor executor = subscriber.executor();
         if (executor != null) {
-            executor.execute(job);
+            executor.execute(job); // 交给线程池进行处理
         } else {
             try {
                 job.run();
@@ -122,13 +123,13 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
             }
         }
     }
-    
+
     @Override
     public void shutdown() throws NacosException {
         this.shutdown = true;
         this.queue.clear();
     }
-    
+
     @Override
     public void run() {
         try {
@@ -139,7 +140,7 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
                     this.publisherName, e);
         }
     }
-    
+
     private void waitSubscriberForInit() {
         // To ensure that messages are not lost, enable EventHandler when
         // waiting for the first Subscriber to register
@@ -150,11 +151,12 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
             ThreadUtils.sleep(1000L);
         }
     }
-    
+
     private void handleEvents() {
         while (!shutdown) {
             try {
-                final Event event = queue.take();
+                // 不断从队列获取 event，然后处理
+                final Event event = queue.take(); // event：ClientEvent$ClientDisconnectEvent、ServiceEvent$ServiceChangeEvent、ClientOperationEvent$ClienSubscribeServiceEvent
                 handleEvent(event);
             } catch (InterruptedException e) {
                 Loggers.EVT_LOG.warn("Naming Event Publisher {} take event from queue failed:", this.publisherName, e);
@@ -163,27 +165,34 @@ public class NamingEventPublisher extends Thread implements ShardedEventPublishe
             }
         }
     }
-    
+
     private void handleEvent(Event event) {
         Class<? extends Event> eventType = event.getClass();
-        Set<Subscriber<? extends Event>> subscribers = subscribes.get(eventType);
+        Set<Subscriber<? extends Event>> subscribers = subscribes.get(eventType); // 获取对应 event 的处理器
         if (null == subscribers) {
             if (Loggers.EVT_LOG.isDebugEnabled()) {
                 Loggers.EVT_LOG.debug("[NotifyCenter] No subscribers for slow event {}", eventType.getName());
             }
             return;
         }
+
+        // nacos、etcd、kafka、rpc
+        int i = 0;
         for (Subscriber subscriber : subscribers) {
+            //处理该 event 事件的逻辑
+//            if (i == 0) {z
             notifySubscriber(subscriber, event);
+//            }
+            i++;
         }
     }
-    
+
     void checkIsStart() {
         if (!initialized) {
             throw new IllegalStateException("Publisher does not start");
         }
     }
-    
+
     public String getStatus() {
         return String.format("Publisher %-30s: shutdown=%5s, queue=%7d/%-7d", publisherName, shutdown,
                 currentEventSize(), queueMaxSize);

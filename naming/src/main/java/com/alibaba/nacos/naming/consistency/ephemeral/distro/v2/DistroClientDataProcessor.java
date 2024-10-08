@@ -97,6 +97,8 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
         if (event instanceof ClientEvent.ClientVerifyFailedEvent) {
             syncToVerifyFailedServer((ClientEvent.ClientVerifyFailedEvent) event);
         } else {
+            // ClientEvent.ClientChangedEvent
+            // ClientEvent.ClientDisconnectEvent
             syncToAllServer((ClientEvent) event);
         }
     }
@@ -110,10 +112,12 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
         // Verify failed data should be sync directly.
         distroProtocol.syncToTarget(distroKey, DataOperation.ADD, event.getTargetServer(), 0L);
     }
-    
+
+    // 同步给其他的 nacos 节点
     private void syncToAllServer(ClientEvent event) {
         Client client = event.getClient();
         // Only ephemeral data sync by Distro, persist client should sync by raft.
+        // 临时数据通过 Distro 通知，持久化数据通过 raft 通知
         if (null == client || !client.isEphemeral() || !clientManager.isResponsibleClient(client)) {
             return;
         }
@@ -271,12 +275,15 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     @Override
     public List<DistroData> getVerifyData() {
         List<DistroData> result = null;
+        // 对每个本机所管理的注册客户端进行处理
         for (String each : clientManager.allClientId()) {
             Client client = clientManager.getClient(each);
             if (null == client || !client.isEphemeral()) {
                 continue;
             }
+            // 如果是自己管理的客户端
             if (clientManager.isResponsibleClient(client)) {
+                // 需要验证的数据就是每个节点的clientId和revision
                 DistroClientVerifyInfo verifyData = new DistroClientVerifyInfo(client.getClientId(),
                         client.getRevision());
                 DistroKey distroKey = new DistroKey(client.getClientId(), TYPE);

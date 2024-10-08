@@ -52,17 +52,19 @@ public class PushDelayTask extends AbstractDelayTask {
         setTaskInterval(delay);
         setLastProcessTime(System.currentTimeMillis());
     }
-    
+
     @Override
     public void merge(AbstractDelayTask task) {
         if (!(task instanceof PushDelayTask)) {
             return;
         }
         PushDelayTask oldTask = (PushDelayTask) task;
+        // 合并成一类
         if (isPushToAll() || oldTask.isPushToAll()) {
             pushToAll = true;
             targetClients = null;
         } else {
+            // TODO "设置个集合，将连接放入，后续要一个个的推，这部分是针对失败的数据"
             targetClients.addAll(oldTask.getTargetClients());
         }
         setLastProcessTime(Math.min(getLastProcessTime(), task.getLastProcessTime()));

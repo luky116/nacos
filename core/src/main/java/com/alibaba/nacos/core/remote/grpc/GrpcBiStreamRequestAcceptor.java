@@ -47,7 +47,7 @@ import java.util.Map;
 public class GrpcBiStreamRequestAcceptor extends BiRequestStreamGrpc.BiRequestStreamImplBase {
     
     @Autowired
-    ConnectionManager connectionManager;
+    ConnectionManager connectionManager; // gRpc client 连接管理
     
     private void traceDetailIfNecessary(Payload grpcRequest) {
         String clientIp = grpcRequest.getMetadata().getClientIp();
@@ -81,7 +81,7 @@ public class GrpcBiStreamRequestAcceptor extends BiRequestStreamGrpc.BiRequestSt
             String clientIp = "";
             
             @Override
-            public void onNext(Payload payload) {
+            public void onNext(Payload payload) { // 处理 RPC 请求的入口
                 
                 clientIp = payload.getMetadata().getClientIp();
                 traceDetailIfNecessary(payload);

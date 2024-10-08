@@ -34,7 +34,8 @@ public abstract class AbstractNacosTaskExecuteEngine<T extends NacosTask> implem
     private final Logger log;
     
     private final ConcurrentHashMap<Object, NacosTaskProcessor> taskProcessors = new ConcurrentHashMap<>();
-    
+
+    // 默认的处理器。如果未配置特定的处理器，则使用默认的处理器
     private NacosTaskProcessor defaultTaskProcessor;
     
     public AbstractNacosTaskExecuteEngine(Logger logger) {
@@ -53,6 +54,7 @@ public abstract class AbstractNacosTaskExecuteEngine<T extends NacosTask> implem
     
     @Override
     public NacosTaskProcessor getProcessor(Object key) {
+        // 不在缓存中就取默认的
         return taskProcessors.containsKey(key) ? taskProcessors.get(key) : defaultTaskProcessor;
     }
     

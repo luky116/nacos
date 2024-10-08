@@ -35,6 +35,7 @@ public class GrpcClusterServer extends BaseGrpcServer {
     
     @Override
     public int rpcPortOffset() {
+        // port 偏移： +1001
         return Constants.CLUSTER_GRPC_PORT_DEFAULT_OFFSET;
     }
     

@@ -45,9 +45,11 @@ import java.util.concurrent.ConcurrentMap;
  */
 @Component
 public class ClientServiceIndexesManager extends SmartSubscriber {
-    
+
+    // Service 和 instance服务发布者 clientId 的映射关系
     private final ConcurrentMap<Service, Set<String>> publisherIndexes = new ConcurrentHashMap<>();
-    
+
+    // Service 和 instance服务订阅者 clientId 的映射关系
     private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
     
     public ClientServiceIndexesManager() {
@@ -57,7 +59,8 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     public Collection<String> getAllClientsRegisteredService(Service service) {
         return publisherIndexes.containsKey(service) ? publisherIndexes.get(service) : new ConcurrentHashSet<>();
     }
-    
+
+    // PushExecuteTask 中会用到，获取要推送的 client 信息
     public Collection<String> getAllClientsSubscribeService(Service service) {
         return subscriberIndexes.containsKey(service) ? subscriberIndexes.get(service) : new ConcurrentHashSet<>();
     }
@@ -90,22 +93,29 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     
     @Override
     public void onEvent(Event event) {
+        // 如果有 client 断开连接，会发送这个 event
         if (event instanceof ClientEvent.ClientDisconnectEvent) {
             handleClientDisconnect((ClientEvent.ClientDisconnectEvent) event);
         } else if (event instanceof ClientOperationEvent) {
             handleClientOperation((ClientOperationEvent) event);
         }
     }
-    
+
+    // TODO 理清楚 SubscribeService 和 PublishedService 之间的区别和联系
     private void handleClientDisconnect(ClientEvent.ClientDisconnectEvent event) {
         Client client = event.getClient();
+        // 从订阅者列表中移除所有服务对这个 client 的引用
+        // private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
+        // key: Service      value: 客户端ID集合
         for (Service each : client.getAllSubscribeService()) {
+            // 移除订阅者信息
             removeSubscriberIndexes(each, client.getClientId());
         }
         DeregisterInstanceReason reason = event.isNative()
                 ? DeregisterInstanceReason.NATIVE_DISCONNECTED : DeregisterInstanceReason.SYNCED_DISCONNECTED;
         long currentTimeMillis = System.currentTimeMillis();
         for (Service each : client.getAllPublishedService()) {
+            // 从发布者列表中移除所有服务对这个 client 的引用
             removePublisherIndexes(each, client.getClientId());
             InstancePublishInfo instance = client.getInstancePublishInfo(each);
             NotifyCenter.publishEvent(new DeregisterInstanceTraceEvent(currentTimeMillis,
@@ -145,6 +155,7 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     private void addSubscriberIndexes(Service service, String clientId) {
         subscriberIndexes.computeIfAbsent(service, key -> new ConcurrentHashSet<>());
         // Fix #5404, Only first time add need notify event.
+        // TODO 分析原因，为啥这样会导致重复打印日志？
         if (subscriberIndexes.get(service).add(clientId)) {
             NotifyCenter.publishEvent(new ServiceEvent.ServiceSubscribedEvent(service, clientId));
         }

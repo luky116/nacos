@@ -107,6 +107,7 @@ public class RpcClientFactory {
         return CLIENT_MAP.computeIfAbsent(clientName, clientNameInner -> {
             LOGGER.info("[RpcClientFactory] create a new rpc client of " + clientName);
             try {
+                // 使用 GrpcSdkClient 作为默认的客户端
                 return new GrpcSdkClient(clientNameInner, threadPoolCoreSize, threadPoolMaxSize, labels, tlsConfig);
             } catch (Throwable throwable) {
                 LOGGER.error("Error to init GrpcSdkClient for client name :" + clientName, throwable);
@@ -142,6 +143,7 @@ public class RpcClientFactory {
      * @param threadPoolMaxSize  grpc thread pool max size
      * @return rpc client.
      */
+    // 使用 rpc cluster client
     public static RpcClient createClusterClient(String clientName, ConnectionType connectionType,
                                                 Integer threadPoolCoreSize, Integer threadPoolMaxSize, Map<String, String> labels) {
         return createClusterClient(clientName, connectionType, threadPoolCoreSize, threadPoolMaxSize, labels, null);

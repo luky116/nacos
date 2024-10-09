@@ -36,3 +36,14 @@ Build Instructions for NACOS
 
 	#build nacos
     $ mvn -Prelease-nacos -Dmaven.test.skip=true clean install -U
+
+    # 安装 JDK
+    brew install --cask adoptopenjdk/openjdk/adoptopenjdk8
+
+    # 使用 JDK
+    export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
+
+    # 编译
+    mvn -Prelease-nacos -Dmaven.test.skip=true -Dcheckstyle.skip=true -Drat.skip=true -Dpmd.skip=true  clean install -U
+
+

@@ -30,6 +30,8 @@ import com.alibaba.nacos.api.remote.response.ConnectResetResponse;
 import com.alibaba.nacos.api.remote.response.ErrorResponse;
 import com.alibaba.nacos.api.remote.response.Response;
 import com.alibaba.nacos.common.lifecycle.Closeable;
+import com.alibaba.nacos.common.packagescan.resource.DefaultResourceLoader;
+import com.alibaba.nacos.common.packagescan.resource.ResourceLoader;
 import com.alibaba.nacos.common.remote.ConnectionType;
 import com.alibaba.nacos.common.remote.PayloadRegistry;
 import com.alibaba.nacos.common.utils.CollectionUtils;
@@ -99,7 +101,9 @@ public abstract class RpcClient implements Closeable {
     private static final Pattern EXCLUDE_PROTOCOL_PATTERN = Pattern.compile("(?<=\\w{1,5}://)(.*)");
     
     protected RpcClientConfig rpcClientConfig;
-    
+
+    protected final ResourceLoader resourceLoader = new DefaultResourceLoader();
+
     static {
         PayloadRegistry.init();
     }
@@ -628,7 +632,7 @@ public abstract class RpcClient implements Closeable {
     public Response request(Request request, long timeoutMills) throws NacosException {
         int retryTimes = 0;
         Response response;
-        Exception exceptionThrow = null;
+        Throwable exceptionThrow = null;
         long start = System.currentTimeMillis();
         while (retryTimes < rpcClientConfig.retryTimes() && System.currentTimeMillis() < timeoutMills + start) {
             boolean waitReconnect = false;
@@ -661,7 +665,7 @@ public abstract class RpcClient implements Closeable {
                 lastActiveTimeStamp = System.currentTimeMillis();
                 return response;
                 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 if (waitReconnect) {
                     try {
                         // wait client to reconnect.
@@ -701,8 +705,8 @@ public abstract class RpcClient implements Closeable {
      */
     public void asyncRequest(Request request, RequestCallBack callback) throws NacosException {
         int retryTimes = 0;
-        
-        Exception exceptionToThrow = null;
+    
+        Throwable exceptionToThrow = null;
         long start = System.currentTimeMillis();
         while (retryTimes < rpcClientConfig.retryTimes() && System.currentTimeMillis() < start + callback
                 .getTimeout()) {
@@ -714,7 +718,7 @@ public abstract class RpcClient implements Closeable {
                 }
                 this.currentConnection.asyncRequest(request, callback);
                 return;
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 if (waitReconnect) {
                     try {
                         // wait client to reconnect.

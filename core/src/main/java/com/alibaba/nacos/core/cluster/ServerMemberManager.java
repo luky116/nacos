@@ -18,6 +18,8 @@ package com.alibaba.nacos.core.cluster;
 
 import com.alibaba.nacos.api.ability.ServerAbilities;
 import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.remote.response.ResponseCode;
+import com.alibaba.nacos.core.cluster.remote.request.MemberReportRequest;
 import com.alibaba.nacos.auth.util.AuthHeaderUtil;
 import com.alibaba.nacos.common.JustForTest;
 import com.alibaba.nacos.common.http.Callback;
@@ -38,16 +40,18 @@ import com.alibaba.nacos.common.utils.VersionUtils;
 import com.alibaba.nacos.core.ability.ServerAbilityInitializer;
 import com.alibaba.nacos.core.ability.ServerAbilityInitializerHolder;
 import com.alibaba.nacos.core.cluster.lookup.LookupFactory;
+import com.alibaba.nacos.core.cluster.remote.ClusterRpcClientProxy;
+import com.alibaba.nacos.core.cluster.remote.response.MemberReportResponse;
 import com.alibaba.nacos.core.utils.Commons;
 import com.alibaba.nacos.core.utils.GenericType;
 import com.alibaba.nacos.core.utils.GlobalExecutor;
 import com.alibaba.nacos.core.utils.Loggers;
 import com.alibaba.nacos.sys.env.Constants;
 import com.alibaba.nacos.sys.env.EnvUtil;
+import com.alibaba.nacos.sys.utils.ApplicationUtils;
 import com.alibaba.nacos.sys.utils.InetUtils;
 import org.springframework.boot.web.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PreDestroy;
@@ -61,6 +65,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
+
+import static com.alibaba.nacos.api.exception.NacosException.CLIENT_INVALID_PARAM;
 
 /**
  * Cluster node management in Nacos.
@@ -511,6 +517,8 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         };
         
         private int cursor = 0;
+    
+        private ClusterRpcClientProxy clusterRpcClientProxy;
         
         @Override
         protected void executeBody() {
@@ -524,11 +532,19 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
             Member target = members.get(cursor);
             
             Loggers.CLUSTER.debug("report the metadata to the node : {}", target.getAddress());
-            
+    
+            if (target.getAbilities().getRemoteAbility().isGrpcReportEnabled()) {
+                reportByGrpc(target);
+            } else {
+                reportByHttp(target);
+            }
+        }
+        
+        private void reportByHttp(Member target) {
             final String url = HttpUtils
                     .buildUrl(false, target.getAddress(), EnvUtil.getContextPath(), Commons.NACOS_CORE_CONTEXT,
                             "/cluster/report");
-            
+    
             try {
                 Header header = Header.newInstance().addParam(Constants.NACOS_SERVER_HEADER, VersionUtils.version);
                 AuthHeaderUtil.addIdentityToHeader(header);
@@ -536,9 +552,6 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
                         .post(url, header, Query.EMPTY, getSelf(), reference.getType(), new Callback<String>() {
                             @Override
                             public void onReceive(RestResult<String> result) {
-                                if (isBelow13Version(result.getCode())) {
-                                    handleBelow13Version(target);
-                                }
                                 if (result.ok()) {
                                     handleReportResult(result.getData(), target);
                                 } else {
@@ -547,22 +560,51 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
                                     MemberUtil.onFail(ServerMemberManager.this, target);
                                 }
                             }
-                            
+                    
                             @Override
                             public void onError(Throwable throwable) {
                                 Loggers.CLUSTER.error("failed to report new info to target node : {}, error : {}",
                                         target.getAddress(), ExceptionUtil.getAllExceptionMsg(throwable));
                                 MemberUtil.onFail(ServerMemberManager.this, target, throwable);
                             }
-                            
+                    
                             @Override
                             public void onCancel() {
-                            
+                        
                             }
                         });
             } catch (Throwable ex) {
-                Loggers.CLUSTER.error("failed to report new info to target node : {}, error : {}", target.getAddress(),
+                Loggers.CLUSTER.error("failed to report new info to target node by http : {}, error : {}", target.getAddress(),
                         ExceptionUtil.getAllExceptionMsg(ex));
+            }
+        }
+        
+        private void reportByGrpc(Member target) {
+            //Todo  circular reference
+            if (Objects.isNull(clusterRpcClientProxy)) {
+                clusterRpcClientProxy =  ApplicationUtils.getBean(ClusterRpcClientProxy.class);
+            }
+            if (!clusterRpcClientProxy.isRunning(target)) {
+                MemberUtil.onFail(ServerMemberManager.this, target,
+                        new NacosException(CLIENT_INVALID_PARAM, "No rpc client related to member: " + target));
+                return;
+            }
+            
+            MemberReportRequest memberReportRequest = new MemberReportRequest(getSelf());
+            
+            try {
+                MemberReportResponse response = (MemberReportResponse) clusterRpcClientProxy.sendRequest(target, memberReportRequest);
+                if (response.getResultCode() == ResponseCode.SUCCESS.getCode()) {
+                    MemberUtil.onSuccess(ServerMemberManager.this, target, response.getNode());
+                } else {
+                    MemberUtil.onFail(ServerMemberManager.this, target);
+                }
+            } catch (NacosException e) {
+                if (e.getErrCode() == NacosException.NO_HANDLER) {
+                    target.getAbilities().getRemoteAbility().setGrpcReportEnabled(false);
+                }
+                Loggers.CLUSTER.error("failed to report new info to target node by grpc : {}, error : {}", target.getAddress(),
+                        ExceptionUtil.getAllExceptionMsg(e));
             }
         }
         
@@ -588,49 +630,6 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         
         private boolean isBooleanResult(String reportResult) {
             return Boolean.TRUE.toString().equals(reportResult) || Boolean.FALSE.toString().equals(reportResult);
-        }
-        
-        /**
-         * Judge target version whether below 1.3 version.
-         *
-         * @deprecated Remove after 2.2
-         */
-        @Deprecated
-        private boolean isBelow13Version(int code) {
-            return HttpStatus.NOT_IMPLEMENTED.value() == code || HttpStatus.NOT_FOUND.value() == code;
-        }
-        
-        /**
-         * Handle the result when target is below 1.3 version.
-         *
-         * @deprecated Remove after 2.2
-         */
-        @Deprecated
-        private void handleBelow13Version(Member target) {
-            Loggers.CLUSTER.warn("{} version is too low, it is recommended to upgrade the version : {}", target,
-                    VersionUtils.version);
-            Member memberNew = null;
-            if (target.getExtendVal(MemberMetaDataConstants.VERSION) != null) {
-                memberNew = target.copy();
-                // Clean up remote version info.
-                // This value may still stay in extend info when remote server has been downgraded to old version.
-                memberNew.delExtendVal(MemberMetaDataConstants.VERSION);
-                memberNew.delExtendVal(MemberMetaDataConstants.READY_TO_UPGRADE);
-                Loggers.CLUSTER
-                        .warn("{} : Clean up version info," + " target has been downgrade to old version.", memberNew);
-            }
-            if (target.getAbilities() != null && target.getAbilities().getRemoteAbility() != null && target
-                    .getAbilities().getRemoteAbility().isSupportRemoteConnection()) {
-                if (memberNew == null) {
-                    memberNew = target.copy();
-                }
-                memberNew.getAbilities().getRemoteAbility().setSupportRemoteConnection(false);
-                Loggers.CLUSTER
-                        .warn("{} : Clear support remote connection flag,target may rollback version ", memberNew);
-            }
-            if (memberNew != null) {
-                update(memberNew);
-            }
         }
     }
     

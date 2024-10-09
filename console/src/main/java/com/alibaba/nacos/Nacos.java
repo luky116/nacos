@@ -32,6 +32,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class Nacos {
     
     public static void main(String[] args) {
+        System.setProperty("nacos.home", "/Users/oker/meili/yuecai.liu_dacs_at_okg.com/114/Desktop/nacos/data");
         SpringApplication.run(Nacos.class, args);
     }
 }

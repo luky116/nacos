@@ -212,14 +212,17 @@ public class ServiceInfo {
         String serviceName = getGroupedServiceName();
         return getKey(serviceName, clusters);
     }
+
+    @JsonIgnore
+    public String getKeyWithoutClusters() {
+        return getGroupedServiceName();
+    }
     
     @JsonIgnore
     public static String getKey(String name, String clusters) {
-        
         if (!isEmpty(clusters)) {
             return name + Constants.SERVICE_INFO_SPLITER + clusters;
         }
-        
         return name;
     }
     

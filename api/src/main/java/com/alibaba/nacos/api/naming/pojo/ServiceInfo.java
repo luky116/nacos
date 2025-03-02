@@ -212,11 +212,6 @@ public class ServiceInfo {
         String serviceName = getGroupedServiceName();
         return getKey(serviceName, clusters);
     }
-
-    @JsonIgnore
-    public String getKeyWithoutClusters() {
-        return getGroupedServiceName();
-    }
     
     @JsonIgnore
     public static String getKey(String name, String clusters) {
@@ -225,7 +220,12 @@ public class ServiceInfo {
         }
         return name;
     }
-    
+
+    @JsonIgnore
+    public String getKeyWithoutClusters() {
+        return getGroupedServiceName();
+    }
+
     @JsonIgnore
     public String getKeyEncoded() {
         String serviceName = getGroupedServiceName();

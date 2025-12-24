@@ -45,7 +45,7 @@ class MapperManagerTest {
         Field declaredField = mapperManagerClass.getDeclaredField("MAPPER_SPI_MAP");
         declaredField.setAccessible(true);
         Map<String, Map<String, Mapper>> map = (Map<String, Map<String, Mapper>>) declaredField.get(instance);
-        assertEquals(2, map.size());
+        assertEquals(3, map.size());
     }
     
     @Test

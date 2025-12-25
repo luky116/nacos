@@ -71,6 +71,14 @@ public class MetricsMonitor {
     
     private final AtomicInteger emptyPush = new AtomicInteger();
     
+    private final AtomicInteger tcpTotalPush = new AtomicInteger();
+    
+    private final AtomicInteger udpTotalPush = new AtomicInteger();
+    
+    private final AtomicInteger tcpFailPush = new AtomicInteger();
+    
+    private final AtomicInteger udpFailPush = new AtomicInteger();
+    
     private final AtomicInteger serviceSubscribedEventQueueSize = new AtomicInteger();
     
     private final AtomicInteger serviceChangedEventQueueSize = new AtomicInteger();
@@ -182,6 +190,22 @@ public class MetricsMonitor {
         return INSTANCE.emptyPush;
     }
     
+    public static AtomicInteger getTcpTotalPushMonitor() {
+        return INSTANCE.tcpTotalPush;
+    }
+    
+    public static AtomicInteger getUdpTotalPushMonitor() {
+        return INSTANCE.udpTotalPush;
+    }
+    
+    public static AtomicInteger getTcpFailPushMonitor() {
+        return INSTANCE.tcpFailPush;
+    }
+    
+    public static AtomicInteger getUdpFailPushMonitor() {
+        return INSTANCE.udpFailPush;
+    }
+    
     public static AtomicInteger getTotalPushCountForAvg() {
         return INSTANCE.totalPushCountForAvg;
     }
@@ -233,6 +257,22 @@ public class MetricsMonitor {
     
     public static void incrementEmptyPush() {
         INSTANCE.emptyPush.incrementAndGet();
+    }
+    
+    public static void incrementTcpPush() {
+        INSTANCE.tcpTotalPush.incrementAndGet();
+    }
+    
+    public static void incrementUdpPush() {
+        INSTANCE.udpTotalPush.incrementAndGet();
+    }
+    
+    public static void incrementTcpFailPush() {
+        INSTANCE.tcpFailPush.incrementAndGet();
+    }
+    
+    public static void incrementUdpFailPush() {
+        INSTANCE.udpFailPush.incrementAndGet();
     }
     
     public static void incrementInstanceCount() {

@@ -36,8 +36,10 @@ public class NacosMonitorPushResultHook implements PushResultHook {
             MetricsMonitor.incrementEmptyPush();
         }
         if (isRpc(result.getSubscriber())) {
+            MetricsMonitor.incrementTcpPush();
             NamingTpsMonitor.rpcPushSuccess(result.getSubscribeClientId(), result.getSubscriber().getIp());
         } else {
+            MetricsMonitor.incrementUdpPush();
             NamingTpsMonitor.udpPushSuccess(result.getSubscribeClientId(), result.getSubscriber().getIp());
         }
     }
@@ -47,8 +49,10 @@ public class NacosMonitorPushResultHook implements PushResultHook {
         MetricsMonitor.incrementPush();
         MetricsMonitor.incrementFailPush();
         if (isRpc(result.getSubscriber())) {
+            MetricsMonitor.incrementTcpFailPush();
             NamingTpsMonitor.rpcPushFail(result.getSubscribeClientId(), result.getSubscriber().getIp());
         } else {
+            MetricsMonitor.incrementUdpFailPush();
             NamingTpsMonitor.udpPushFail(result.getSubscribeClientId(), result.getSubscriber().getIp());
         }
     }

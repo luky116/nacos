@@ -79,9 +79,11 @@ public class UdpConnector {
         }
         try {
             MetricsMonitor.incrementPush();
+            MetricsMonitor.incrementUdpPush();
             doSend(ackEntry.getOrigin());
         } catch (IOException e) {
             MetricsMonitor.incrementFailPush();
+            MetricsMonitor.incrementUdpFailPush();
             throw new NacosException(NacosException.SERVER_ERROR, "[NACOS-PUSH] push data with exception: ", e);
         }
     }
